@@ -1,17 +1,14 @@
-console.log("hello xpath : DXC");
-
-function sendDataToBackground(type, xpath) {
-  chrome.runtime.sendMessage({ type: type, xpath: xpath });
-}
+console.log(
+  "XPath Identifier Extension Active... Tracking mouse click events!"
+);
 
 let label_temp = null;
 document.body.addEventListener("click", (e) => {
-  let xpath = null;
-  console.log(e.target);
-  //console.log(e.target.getAttribute("id"));
-
   const element = e.target;
   const elemType = e.target.nodeName;
+  console.log(element);
+
+  let xpath = null;
 
   if (elemType === "LABEL" || elemType === "INPUT" || elemType === "SELECT") {
     if (elemType === "LABEL") {
@@ -19,66 +16,111 @@ document.body.addEventListener("click", (e) => {
     }
 
     if (label_temp && elemType === "INPUT") {
-      xpath = `@FindBy(xpath = "//input[@id=(//label[text()='${label_temp}'])/@for]")
-      private WebElement __inputTextField__;`;
-      console.log(xpath);
+      xpath = `//input[@id=(//label[text()='${label_temp}'])/@for]`;
       label_temp = null;
-      sendDataToBackground("STORE_XPATH_DATA", xpath);
+      sendDataToBackground(xpath);
     }
 
     if (label_temp && elemType === "SELECT") {
-      xpath = `@FindBy(xpath = "//select[@id=(//label[text()='${label_temp}'])/@for]")
-      private WebElement __inputSelectField__;`;
-      console.log(xpath);
+      xpath = `//select[@id=(//label[text()='${label_temp}'])/@for]`;
       label_temp = null;
-      sendDataToBackground("STORE_XPATH_DATA", xpath);
+      sendDataToBackground(xpath);
     }
   }
 
   if (elemType === "BUTTON") {
     const innerTxt = element.innerText;
-    const btnId = element.getAttribute("id");
-
-    let trimIndex = null;
-    for (let i = 0; i < btnId.length; i++) {
-      if (btnId[i] === ":") {
-        if (btnId[i + 1] === ":") {
-          trimIndex = i;
-          break;
+    xpath = `//button[text()='${innerTxt}']`;
+    if (getMatchingElementCount(xpath) === 1) {
+      sendDataToBackground(xpath);
+    } else {
+      const btnId = element.getAttribute("id");
+      let trimIndex = null;
+      for (let i = 0; i < btnId.length; i++) {
+        if (btnId[i] === ":") {
+          if (btnId[i + 1] === ":") {
+            trimIndex = i;
+            break;
+          }
         }
       }
+      const trimmedId = btnId.slice(trimIndex);
+      xpath = `//button[text()='${innerTxt}' and contains(@id, '${trimmedId}')]`;
+      sendDataToBackground(xpath);
     }
-    const trimmedId = btnId.slice(trimIndex);
-
-    xpath = `@FindBy(xpath = "//button[text()='${innerTxt}' and contains(@id, '${trimmedId}')")
-    private WebElement __btnElement__;`;
-
-    console.log(xpath);
-    sendDataToBackground("STORE_XPATH_DATA", xpath);
   }
 
   if (elemType === "A") {
     if (element.innerHTML !== "") {
-      const childNodeName = element.firstChild.nodeName;
-      if (childNodeName === "#text") {
-        xpath = `@FindBy(xpath = "//a[text()='${element.innerText}']")
-        private WebElement __textLink__;`;
+      const firstChildName = element.firstChild.nodeName;
+      if (firstChildName === "#text") {
+        xpath = `//a[text()='${element.innerText}']`;
+      } else if (firstChildName === "SVG") {
+        xpath = `//a[span='${element.innerText}']`;
       } else {
-        xpath = `@FindBy(xpath = "//a[${childNodeName.toLowerCase()}='${
-          element.innerText
-        }']")
-        private WebElement __nestedTextLink__;`;
+        xpath = `//a[${firstChildName.toLowerCase()}='${element.innerText}']`;
       }
     } else {
       const aTitle = element.getAttribute("title");
       if (aTitle) {
-        xpath = `@FindBy(xpath = "//a[@title='${aTitle}']")
-        private WebElement __textlessLinkElement__;`;
+        xpath = `//a[contains(@title,'${aTitle}')]`;
+      } else {
+        //xpath else logic here
+      }
+    }
+    if (xpath) sendDataToBackground(xpath);
+  }
+
+  if (elemType === "svg") {
+    const parentNode = element.parentNode;
+    if (parentNode.nodeName === "A") {
+      const aTitle = parentNode.getAttribute("title");
+      if (aTitle) {
+        xpath = `//a[@title='${aTitle}']`;
       } else {
         //xpath logic here
       }
     }
-    console.log(xpath);
-    sendDataToBackground("STORE_XPATH_DATA", xpath);
+    if (xpath) sendDataToBackground(xpath);
+  }
+
+  if (elemType === "IMG") {
+    const parentNode = element.parentNode;
+    if (parentNode.nodeName === "A") {
+      const imgTitle = element.getAttribute("title");
+      if (imgTitle) {
+        xpath = `//img[@title='${aTitle}']/..`;
+      } else {
+        //xpath logic here
+      }
+    }
+    if (xpath) sendDataToBackground(xpath);
+  }
+
+  if (elemType === "SPAN") {
+    const parentNode = element.parentNode;
+    if (parentNode.nodeName === "A") {
+      xpath = `//a[span='${parentNode.innerText}']`;
+    }
+    if (xpath) sendDataToBackground(xpath);
   }
 });
+
+function sendDataToBackground(xpath) {
+  const countVal = getMatchingElementCount(xpath);
+  const xpathVar = `@FindBy(xpath = "${xpath}")
+  private WebElement __variableNameHere__;
+  //MatchingElemCount: ${countVal}`;
+  console.log(xpathVar);
+  chrome.runtime.sendMessage({ type: "STORE_XPATH_DATA", xpath: xpathVar });
+}
+
+function getMatchingElementCount(xpath) {
+  return document.evaluate(
+    xpath,
+    document,
+    null,
+    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+    null
+  ).snapshotLength;
+}
