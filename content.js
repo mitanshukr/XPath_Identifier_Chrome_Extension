@@ -76,7 +76,7 @@ document.body.addEventListener("click", (e) => {
     if (parentNode.nodeName === "A") {
       const aTitle = parentNode.getAttribute("title");
       if (aTitle) {
-        xpath = `//a[@title='${aTitle}']`;
+        xpath = `//a[contains(@title,'${aTitle}')]`;
       } else {
         //xpath logic here
       }
@@ -89,7 +89,7 @@ document.body.addEventListener("click", (e) => {
     if (parentNode.nodeName === "A") {
       const imgTitle = element.getAttribute("title");
       if (imgTitle) {
-        xpath = `//img[@title='${aTitle}']/..`;
+        xpath = `//img[contains(@title,'${aTitle}')]/..`;
       } else {
         //xpath logic here
       }
