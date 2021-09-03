@@ -89,7 +89,7 @@ document.body.addEventListener("click", (e) => {
     if (parentNode.nodeName === "A") {
       const imgTitle = element.getAttribute("title");
       if (imgTitle) {
-        xpath = `//img[contains(@title,'${aTitle}')]/..`;
+        xpath = `//img[contains(@title,'${imgTitle}')]/..`;
       } else {
         //xpath logic here
       }
