@@ -28,6 +28,7 @@ document.body.addEventListener("click", (e) => {
   //   }
   // }
 
+  //Input and Select type elements click handling
   if (elemType === "INPUT" || elemType === "SELECT") {
     const elemId = element.getAttribute("id");
     const labelNode = getInputLabelNode(elemId);
@@ -38,12 +39,13 @@ document.body.addEventListener("click", (e) => {
       else xpath = `//select[@id=(//label[text()='${labelName}'])/@for]`;
       sendDataToBackground(xpath);
     } else {
-      if (elemType === "INPUT") xpath = `//input[contains(@id, ${elemId})]`;
-      else xpath = `//select[contains(@id, ${elemId})]`;
+      if (elemType === "INPUT") xpath = `//input[contains(@id, '${elemId}')]`;
+      else xpath = `//select[contains(@id, '${elemId}')]`;
       sendDataToBackground(xpath);
     }
   }
 
+  //Button click handling
   if (elemType === "BUTTON") {
     const innerTxt = element.innerText;
     xpath = `//button[text()='${innerTxt}']`;
@@ -66,11 +68,17 @@ document.body.addEventListener("click", (e) => {
     }
   }
 
+  //a tag/link element click handling
   if (elemType === "A") {
     if (element.innerHTML !== "") {
       const firstChildName = element.firstChild.nodeName;
       if (firstChildName === "#text") {
         xpath = `//a[text()='${element.innerText}']`;
+        if (getMatchingElementCount(xpath) !== 1) {
+          const aTagId = element.getAttribute("id");
+          if (aTagId && aTagId !== "")
+            xpath = `//a[text()='${element.innerText}' and contains(@id, '${aTagId}')]`;
+        }
       } else if (firstChildName === "svg") {
         xpath = `//a[span='${element.innerText}']`;
       } else {
@@ -87,6 +95,7 @@ document.body.addEventListener("click", (e) => {
     if (xpath) sendDataToBackground(xpath);
   }
 
+  //svg click handling
   if (elemType === "svg") {
     const parentNode = element.parentNode;
     if (parentNode.nodeName === "A") {
@@ -94,12 +103,13 @@ document.body.addEventListener("click", (e) => {
       if (aTitle) {
         xpath = `//a[contains(@title,'${aTitle}')]`;
       } else {
-        //xpath logic here
+        //xpath else logic here
       }
     }
     if (xpath) sendDataToBackground(xpath);
   }
 
+  //img tag click handling
   if (elemType === "IMG") {
     const parentNode = element.parentNode;
     if (parentNode.nodeName === "A") {
@@ -107,12 +117,13 @@ document.body.addEventListener("click", (e) => {
       if (imgTitle) {
         xpath = `//img[contains(@title,'${imgTitle}')]/..`;
       } else {
-        //xpath logic here
+        //xpath else logic here
       }
     }
     if (xpath) sendDataToBackground(xpath);
   }
 
+  //span element click handling
   if (elemType === "SPAN") {
     const parentNode = element.parentNode;
     if (parentNode.nodeName === "A") {

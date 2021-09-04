@@ -14,7 +14,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://fa-eudr-dev4-saasfademo1.ds-fa.oraclepdemos.com/*"],
+      "matches": [
+        "https://*.oracledemos.com/*",
+        "https://*.oraclepdemos.com/*"
+      ],
       "js": ["content.js"]
     }
   ],
