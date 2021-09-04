@@ -2,7 +2,7 @@ console.log(
   "XPath Identifier Extension Active... Tracking mouse click events!"
 );
 
-let label_temp = null;
+// let label_temp = null;
 document.body.addEventListener("click", (e) => {
   const element = e.target;
   const elemType = e.target.nodeName;
@@ -10,20 +10,36 @@ document.body.addEventListener("click", (e) => {
 
   let xpath = null;
 
-  if (elemType === "LABEL" || elemType === "INPUT" || elemType === "SELECT") {
-    if (elemType === "LABEL") {
-      label_temp = element.innerText;
-    }
+  // if (elemType === "LABEL" || elemType === "INPUT" || elemType === "SELECT") {
+  //   if (elemType === "LABEL") {
+  //     label_temp = element.innerText;
+  //   }
 
-    if (label_temp && elemType === "INPUT") {
-      xpath = `//input[@id=(//label[text()='${label_temp}'])/@for]`;
-      label_temp = null;
+  //   if (label_temp && elemType === "INPUT") {
+  //     xpath = `//input[@id=(//label[text()='${label_temp}'])/@for]`;
+  //     label_temp = null;
+  //     sendDataToBackground(xpath);
+  //   }
+
+  //   if (label_temp && elemType === "SELECT") {
+  //     xpath = `//select[@id=(//label[text()='${label_temp}'])/@for]`;
+  //     label_temp = null;
+  //     sendDataToBackground(xpath);
+  //   }
+  // }
+
+  if (elemType === "INPUT" || elemType === "SELECT") {
+    const elemId = element.getAttribute("id");
+    const labelNode = getInputLabelNode(elemId);
+    if (labelNode) {
+      const labelName = labelNode.innerHTML;
+      if (elemType === "INPUT")
+        xpath = `//input[@id=(//label[text()='${labelName}'])/@for]`;
+      else xpath = `//select[@id=(//label[text()='${labelName}'])/@for]`;
       sendDataToBackground(xpath);
-    }
-
-    if (label_temp && elemType === "SELECT") {
-      xpath = `//select[@id=(//label[text()='${label_temp}'])/@for]`;
-      label_temp = null;
+    } else {
+      if (elemType === "INPUT") xpath = `//input[contains(@id, ${elemId})]`;
+      else xpath = `//select[contains(@id, ${elemId})]`;
       sendDataToBackground(xpath);
     }
   }
@@ -55,7 +71,7 @@ document.body.addEventListener("click", (e) => {
       const firstChildName = element.firstChild.nodeName;
       if (firstChildName === "#text") {
         xpath = `//a[text()='${element.innerText}']`;
-      } else if (firstChildName === "SVG") {
+      } else if (firstChildName === "svg") {
         xpath = `//a[span='${element.innerText}']`;
       } else {
         xpath = `//a[${firstChildName.toLowerCase()}='${element.innerText}']`;
@@ -123,4 +139,14 @@ function getMatchingElementCount(xpath) {
     XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
     null
   ).snapshotLength;
+}
+
+function getInputLabelNode(inputId) {
+  return document.evaluate(
+    `//label[@for='${inputId}']`,
+    document,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  ).singleNodeValue;
 }
