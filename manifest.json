@@ -21,8 +21,5 @@
       "js": ["content.js"]
     }
   ],
-  "permissions": [
-    "tabs",
-    "https://fa-eudr-dev4-saasfademo1.ds-fa.oraclepdemos.com/*"
-  ]
+  "permissions": ["https://*.oracledemos.com/*", "https://*.oraclepdemos.com/*"]
 }
