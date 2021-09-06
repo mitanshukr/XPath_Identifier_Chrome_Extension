@@ -1,5 +1,6 @@
 console.log(
-  "XPath Identifier Extension Active... Tracking mouse click events!"
+  "%cXPath Identifier Extension Active... Tracking mouse click events!",
+  "color: blue; font-size: 20px"
 );
 
 // let label_temp = null;
@@ -29,19 +30,27 @@ document.body.addEventListener("click", (e) => {
   // }
 
   //Input and Select type elements click handling
-  if (elemType === "INPUT" || elemType === "SELECT") {
+  if (
+    elemType === "INPUT" ||
+    elemType === "SELECT" ||
+    elemType === "TEXTAREA"
+  ) {
     const elemId = element.getAttribute("id");
     const labelNode = getInputLabelNode(elemId);
     if (labelNode) {
       const labelName = labelNode.innerHTML;
       if (elemType === "INPUT")
         xpath = `//input[@id=(//label[text()='${labelName}'])/@for]`;
+      else if (elemType === "TEXTAREA")
+        xpath = `//textarea[@id=(//label[text()='${labelName}'])/@for]`;
       else xpath = `//select[@id=(//label[text()='${labelName}'])/@for]`;
-      sendDataToBackground(xpath);
+      sendDataToBackground(elemType, xpath);
     } else {
       if (elemType === "INPUT") xpath = `//input[contains(@id, '${elemId}')]`;
+      else if (elemType === "TEXTAREA")
+        xpath = `//textarea[contains(@id, '${elemId}')]`;
       else xpath = `//select[contains(@id, '${elemId}')]`;
-      sendDataToBackground(xpath);
+      sendDataToBackground(elemType, xpath);
     }
   }
 
@@ -49,9 +58,7 @@ document.body.addEventListener("click", (e) => {
   if (elemType === "BUTTON") {
     const innerTxt = element.innerText;
     xpath = `//button[text()='${innerTxt}']`;
-    if (getMatchingElementCount(xpath) === 1) {
-      sendDataToBackground(xpath);
-    } else {
+    if (getMatchingElementCount(xpath) !== 1) {
       const btnId = element.getAttribute("id");
       let trimIndex = null;
       for (let i = 0; i < btnId.length; i++) {
@@ -64,8 +71,8 @@ document.body.addEventListener("click", (e) => {
       }
       const trimmedId = btnId.slice(trimIndex);
       xpath = `//button[text()='${innerTxt}' and contains(@id, '${trimmedId}')]`;
-      sendDataToBackground(xpath);
     }
+    sendDataToBackground("BUTTON", xpath);
   }
 
   //a tag/link element click handling
@@ -88,11 +95,16 @@ document.body.addEventListener("click", (e) => {
       const aTitle = element.getAttribute("title");
       if (aTitle) {
         xpath = `//a[contains(@title,'${aTitle}')]`;
-      } else {
-        //xpath else logic here
+      }
+      if (!aTitle || getMatchingElementCount(xpath) !== 1) {
+        const aTagId = element.getAttribute("id");
+        if (aTagId && aTagId !== "" && aTitle)
+          xpath = `//a[contains(@title,'${aTitle}') and contains(@id, '${aTagId}')]`;
+        else if (aTagId && aTagId !== "")
+          xpath = `//a[contains(@id, '${aTagId}')]`;
       }
     }
-    if (xpath) sendDataToBackground(xpath);
+    if (xpath) sendDataToBackground("A", xpath);
   }
 
   //svg click handling
@@ -106,7 +118,7 @@ document.body.addEventListener("click", (e) => {
         //xpath else logic here
       }
     }
-    if (xpath) sendDataToBackground(xpath);
+    if (xpath) sendDataToBackground("A", xpath);
   }
 
   //img tag click handling
@@ -120,7 +132,7 @@ document.body.addEventListener("click", (e) => {
         //xpath else logic here
       }
     }
-    if (xpath) sendDataToBackground(xpath);
+    if (xpath) sendDataToBackground("A", xpath);
   }
 
   //span element click handling
@@ -128,18 +140,24 @@ document.body.addEventListener("click", (e) => {
     const parentNode = element.parentNode;
     if (parentNode.nodeName === "A") {
       xpath = `//a[span='${parentNode.innerText}']`;
+      sendDataToBackground("A", xpath);
     }
-    if (xpath) sendDataToBackground(xpath);
+    if (parentNode.nodeName === "TD") {
+      xpath = `//span[text()='__COLUMN_NAME__']/following::table/tbody/tr[1]/td[2]/div/table/tbody/tr`;
+      sendDataToBackground("SEARCH_LIST", xpath);
+    }
   }
 });
 
-function sendDataToBackground(xpath) {
+function sendDataToBackground(xpathType, xpath) {
   const countVal = getMatchingElementCount(xpath);
   const xpathVar = `@FindBy(xpath = "${xpath}")
-  private WebElement __variableNameHere__;
-  //MatchingElemCount: ${countVal}`;
+  private WebElement __VAR_NAME__;
+  //Matches: ${countVal}\n\n`;
   console.log(xpathVar);
-  chrome.runtime.sendMessage({ type: "STORE_XPATH_DATA", xpath: xpathVar });
+  const xpathFunc = getXpathMethodFunc(xpathType);
+  const xpathData = xpathVar + xpathFunc;
+  chrome.runtime.sendMessage({ type: "STORE_XPATH_DATA", xpath: xpathData });
 }
 
 function getMatchingElementCount(xpath) {
@@ -160,4 +178,44 @@ function getInputLabelNode(inputId) {
     XPathResult.FIRST_ORDERED_NODE_TYPE,
     null
   ).singleNodeValue;
+}
+
+function getXpathMethodFunc(xpathType) {
+  if (xpathType === "BUTTON" || xpathType === "A") {
+    return `public void __FUNCTION_NAME__() {
+      wait.until(ExpectedConditions.visibilityOf(this.__VAR_NAME__)).click();
+      // TestUtilities.waitForElementInvisibility(this.__VAR_NAME__);
+    }`;
+  }
+  if (xpathType === "INPUT" || xpathType === "TEXTAREA") {
+    return `public void __FUNCTION_NAME__(String input) {
+      if (input.trim().equals(""))
+        return;
+      wait.until(ExpectedConditions.visibilityOf(this.__VAR_NAME__)).clear();
+      wait.until(ExpectedConditions.visibilityOf(this.__VAR_NAME__)).sendKeys(input);
+      // Keys.RETURN
+    }`;
+  }
+  if (xpathType === "SELECT") {
+    return `public void __FUNCTION_NAME__(String option) {
+      if (option.trim().equals(""))
+        return;
+      Select s = new Select(this.__VAR_NAME__);
+      s.selectByVisibleText(option);
+    }`;
+  }
+
+  if (xpathType === "SEARCH_LIST") {
+    return `public void __FUNCTION_NAME__(String input) {
+      if (input.trim().equals(""))
+        return;
+      wait.until(ExpectedConditions.visibilityOf(this.__SEARCH_ICON__)).click();
+      // wait.until(ExpectedConditions.visibilityOf(this.__SEARCH_LINK__)).click();
+      wait.until(ExpectedConditions.visibilityOf(this.__SEARCH_INPUT__)).clear();
+      wait.until(ExpectedConditions.visibilityOf(this.__SEARCH_INPUT__)).sendKeys(input, Keys.RETURN);
+      wait.until(ExpectedConditions.visibilityOf(this.__SEARCH__OUTPUT_ROW__)).click();
+      wait.until(ExpectedConditions.visibilityOf(this.__SEARCH_OK_BTN__)).click();
+      TestUtilities.waitForElementInvisibility(this.__SEARCH_OK_BTN__);
+    }`;
+  }
 }

@@ -38,6 +38,6 @@ chrome.extension.onMessage.addListener(async function (
 
   if (request.type === "STORE_XPATH_DATA") {
     console.log(request.xpath);
-    xpathData += request.xpath + "\n\n";
+    xpathData += request.xpath + "\n\n\n";
   }
 });
